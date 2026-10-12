@@ -180,3 +180,9 @@ assert.match(graph.systemPrompt(p, '수민'), /대화 상대는 "수민"/);
 const gflat = cli.flatten([{ role: 'user', content: '다들 뭐해' }, { role: 'assistant', content: '[민지] 누움\n[준호] 롤' }, { role: 'user', content: '나도 낄래' }], true, true);
 assert.match(gflat, /\[사용자\] 다들 뭐해\n\n\[민지\] 누움\n\[준호\] 롤\n\n사용자의 새 메시지:\n나도 낄래[\s\S]*\[이름\] 메시지/);
 console.log('ok (bubbles, group)');
+
+// --- 디스코드 DM 가져오기: DiscordChatExporter "dm" 출력 읽기
+const dceCli = require('./src/dce.js');
+assert.deepEqual(dceCli.parseDmList('123456789012345678 | 홍길동\n98765 | 민지, 준호 | 그룹\n\nERROR\n'),
+  [{ id: '123456789012345678', name: '홍길동' }, { id: '98765', name: '민지, 준호 | 그룹' }]);
+console.log('ok (discord dm list)');

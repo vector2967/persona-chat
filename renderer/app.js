@@ -113,7 +113,12 @@ const GUIDES = [
     '디스코드 설정 → "데이터 및 개인정보 보호" → "내 데이터 요청"으로 데이터 패키지를 신청합니다. (며칠 걸릴 수 있어요)',
     '이메일로 온 package.zip을 압축 풀지 말고 그대로 이 앱에서 엽니다.',
     '채널·DM 목록에서 내 말투가 잘 드러나는 대화를 고르세요. 여러 개를 합쳐도 됩니다.',
-  ], note: '디스코드는 DM 내보내기 기능이 없고, 데이터 패키지에는 내가 보낸 메시지만 들어 있어요. 그래서 "나"의 페르소나만 만들 수 있습니다.' },
+  ], note: '데이터 패키지에는 내가 보낸 메시지만 들어 있어서 "나"의 페르소나만 만들 수 있어요. 상대 페르소나는 위의 "디스코드 DM 바로 가져오기"를 쓰세요.' },
+];
+const DISCORD_TOKEN_STEPS = [
+  'PC 브라우저에서 discord.com/app에 로그인하고 F12(개발자 도구)를 엽니다.',
+  '"네트워크(Network)" 탭에서 필터에 api를 입력하고, 아무 채널이나 클릭해 요청이 생기게 합니다.',
+  '목록의 요청 하나를 눌러 "요청 헤더(Request Headers)"의 authorization 값을 복사해 아래에 붙여 넣습니다.',
 ];
 const SECTIONS = [
   ['summary', '요약', '어떤 사람인지'],
@@ -503,7 +508,7 @@ async function openImport(into = null) {
     const rows = r.conversations.map(c => {
       const input = h('input', { type: 'checkbox', value: c.key });
       const el = h('label', { class: 'check person' }, input,
-        h('span', {}, c.title, ' ', h('span', { class: 'badge', textContent: `${c.count}개` }), h('small', { textContent: c.people.join(', ') })));
+        h('span', {}, c.title, ' ', c.count ? h('span', { class: 'badge', textContent: `${c.count}개` }) : null, h('small', { textContent: c.people.join(', ') })));
       el.input = input;
       el.search = `${c.title} ${c.people.join(' ')}`.toLowerCase();
       return el;
@@ -514,19 +519,41 @@ async function openImport(into = null) {
       const keys = rows.filter(el => el.input.checked).map(el => el.input.value);
       if (!keys.length) { err.textContent = '대화를 하나 이상 골라 주세요.'; return; }
       err.textContent = '';
-      try { showPeople(await api.pickConversations(keys)); } catch (e) { err.textContent = e.message; }
+      next.disabled = true;
+      try { showPeople(await api.pickConversations(keys)); } catch (e) { err.textContent = e.message; next.disabled = false; }
     } });
     result.replaceChildren(h('div', { class: 'card reveal' },
       h('div', { class: 'row wrap' }, h('b', { textContent: r.file }),
         h('span', { class: 'badge', textContent: PLATFORMS[r.platform] }), h('span', { class: 'badge', textContent: `대화 ${r.conversations.length}개` })),
-      h('p', { class: 'hint', textContent: r.platform === 'discord'
+      h('p', { class: 'hint', textContent: r.dce
+        ? '페르소나로 만들 사람과의 DM을 고르세요. 고른 DM만 내보내요(길면 몇 분 걸려요).'
+        : r.platform === 'discord'
         ? '디스코드 데이터 패키지에는 내가 보낸 메시지만 있어요. 내 페르소나에 쓸 채널을 고르세요(여러 개를 합치면 말투가 더 풍부해집니다).'
         : '페르소나로 만들 사람이 있는 대화방을 고르세요. 여러 개를 고르면 합쳐서 분석합니다(같은 사람이 여러 방에 있을 때 좋아요).' }),
       h('div', { class: 'row' }, filter,
         h('button', { class: 'small', textContent: '보이는 것 모두 선택', onclick: () => { for (const el of rows) if (!el.hidden) el.input.checked = true; } })),
       h('div', { class: 'conv-list' }, rows),
-      h('div', { class: 'row', style: 'margin-top:12px' }, next),
+      h('div', { class: 'row', style: 'margin-top:12px' }, next, progress),
     ));
+  }
+
+  // 디스코드 DM: 토큰을 받아 DiscordChatExporter로 DM 목록을 가져온다. 토큰은 저장하지 않는다
+  function discordCard() {
+    const token = h('input', { type: 'password', placeholder: '디스코드 토큰 붙여넣기', autocomplete: 'off', 'aria-label': '디스코드 토큰' });
+    const go = h('button', { class: 'primary', textContent: 'DM 목록 불러오기' });
+    go.onclick = async () => {
+      err.textContent = '';
+      go.disabled = true;
+      progress.classList.add('shimmer');
+      try { const r = await api.importDiscord(token.value); token.value = ''; showConversations(r); }
+      catch (e) { err.textContent = e.message; }
+      finally { go.disabled = false; progress.classList.remove('shimmer'); }
+    };
+    return h('details', { class: 'card guide' },
+      h('summary', {}, h('b', { textContent: '디스코드 DM 바로 가져오기' }), h('span', { class: 'hint', textContent: '상대 메시지까지 · DiscordChatExporter' })),
+      h('ol', {}, DISCORD_TOKEN_STEPS.map(t => h('li', { textContent: t }))),
+      h('div', { class: 'row' }, token, go, progress),
+      h('p', { class: 'hint note', textContent: '토큰은 계정 비밀번호와 같아요. 이 앱은 토큰을 저장하지 않고 이 PC에서 디스코드로만 보냅니다. 내 계정 토큰으로 내보내는 건 디스코드 약관 위반이라 드물게 계정이 제재될 수 있어요. 처음 한 번 DiscordChatExporter(약 11MB)를 내려받습니다.' }));
   }
 
   function showPeople(r) {
@@ -575,6 +602,7 @@ async function openImport(into = null) {
         h('div', {}, h('h3', { textContent: '대화 파일 열기' }),
           h('p', { class: 'hint', textContent: '카카오톡·인스타그램·디스코드에서 내보낸 파일을 여세요. 형식은 자동으로 알아내요. 인스타그램·디스코드는 받은 .zip을 그대로 열면 됩니다.' })),
         h('button', { class: 'primary', onclick: () => pick() }, icon('file'), '파일 고르기')),
+      discordCard(),
       s.hasKey[s.provider] ? null : h('p', { class: 'error', textContent: `${PROVIDERS[s.provider]} API 키가 없어요. 먼저 설정에서 넣어 주세요.` }),
       err, result,
       h('h3', { class: 'guide-title', textContent: '대화 내보내기 가이드' }),

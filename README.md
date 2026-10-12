@@ -38,6 +38,7 @@ xattr -cr "/Applications/Persona Chat.app"
 | 카카오톡 | `.txt` / `.csv` | 대화방 메뉴 → 대화 내용 내보내기 |
 | 인스타그램 DM | 받은 `.zip` 그대로 | 계정 센터 → 내 정보 내보내기(메시지, HTML 또는 JSON) |
 | 디스코드 서버 채널 | `.json` / `.csv` | [DiscordChatExporter](https://github.com/Tyrrrz/DiscordChatExporter)(봇 토큰) |
+| 디스코드 DM (상대 포함) | 앱에서 바로 | 새 페르소나 → **디스코드 DM 바로 가져오기**에 내 계정 토큰을 넣으면 DiscordChatExporter를 내려받아 고른 DM을 내보냅니다(토큰은 저장 안 함, 디스코드 약관상 계정 제재 위험 있음) |
 | 디스코드 (나 자신) | 받은 `package.zip` 그대로 | 설정 → 데이터 및 개인정보 보호 → 내 데이터 요청 |
 
 자세한 단계는 앱의 "새 페르소나" 화면 아래 **대화 내보내기 가이드**에 있습니다.
@@ -85,6 +86,7 @@ npm run icon        # renderer/icon.svg → 아이콘 PNG
 ### 구조
 
 - `src/main.js` 메인 프로세스: 저장, IPC, LLM 호출. 키는 renderer로 보내지 않습니다.
+- `src/dce.js` 디스코드 DM 가져오기(DiscordChatExporter CLI 2.48을 해시 확인 후 내려받아 실행)
 - `src/parsers.js` 대화 파일 파서(카카오톡 txt·csv, 인스타그램 HTML·JSON·zip, 디스코드 DCE JSON·CSV·데이터 패키지)
 - `src/graph.js` 페르소나 지식 그래프(요약·말투·성격·말버릇·주변 사람·기억·키워드)와 글자 2-gram 검색
 - `src/llm.js` Anthropic / OpenAI / Gemini 스트리밍, `src/cli.js` Claude Code / Codex CLI 실행

@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('api', {
   listModels: provider => call('models:list', provider),
   checkCli: provider => call('cli:check', provider),
   openImport: append => call('import:open', append),
+  importDiscord: token => call('import:discord', token),
   pickConversations: keys => call('import:pick', keys),
   build: args => call('persona:build', args),
   listPersonas: () => call('persona:list'),

@@ -6,6 +6,7 @@ const parsers = require('./parsers');
 const graph = require('./graph');
 const llm = require('./llm');
 const cloud = require('./cloud');
+const dce = require('./dce');
 
 // 테스트는 반드시 PERSONA_CHAT_DATA로 다른 폴더를 써야 한다(사용자가 같은 PC에서 실제로 쓰는 데이터와 섞이지 않게)
 if (process.env.PERSONA_CHAT_DATA) app.setPath('userData', path.resolve(process.env.PERSONA_CHAT_DATA));
@@ -114,12 +115,35 @@ handle('import:open', async (e, append) => {
   return imported(r.filePaths.map(f => path.basename(f)).join(', '), platforms, msgs, !!append);
 });
 
+// 디스코드 DM: 토큰으로 DM 목록을 받아 zip과 같은 "대화방 고르기"로 넘긴다. 토큰은 lastZip.pick 안에만 잠시 둔다
+handle('import:discord', async (e, token) => {
+  token = String(token ?? '').trim().replace(/^"|"$/g, '');
+  if (!token) throw new Error('디스코드 토큰을 넣어 주세요.');
+  const progress = t => e.sender.send('progress', t);
+  let exe, dms;
+  try {
+    exe = await dce.ensure(data('tools'), progress);
+    progress('DM 목록 받는 중…');
+    dms = await dce.listDms(exe, token);
+  } finally { progress(''); }
+  if (!dms.length) throw new Error('DM이 없어요.');
+  lastZip = {
+    file: '디스코드 DM', platform: 'discord', dce: true,
+    conversations: dms.map(d => ({ key: d.id, title: d.name, people: [] })),
+    pick: async ids => {
+      progress('DM 내보내는 중… (대화가 길면 몇 분 걸려요)');
+      try { return parsers.parseFiles(await dce.exportDms(exe, token, ids)).msgs; } finally { progress(''); }
+    },
+  };
+  return { zip: true, ...lastZip, pick: undefined };
+});
+
 // zip 안에서 고른 대화방들을 합쳐 일반 파일을 연 것과 같은 결과로
-handle('import:pick', (e, keys) => {
+handle('import:pick', async (e, keys) => {
   if (!lastZip) throw new Error('먼저 zip 파일을 열어 주세요.');
   if (!Array.isArray(keys) || !keys.length) throw new Error('대화를 하나 이상 골라 주세요.');
   const titles = lastZip.conversations.filter(c => keys.includes(c.key)).map(c => c.title);
-  return imported(`${lastZip.file} · ${titles.length > 2 ? `${titles.slice(0, 2).join(', ')} 외 ${titles.length - 2}개` : titles.join(', ')}`, [lastZip.platform], lastZip.pick(keys), lastZip.append);
+  return imported(`${lastZip.file} · ${titles.length > 2 ? `${titles.slice(0, 2).join(', ')} 외 ${titles.length - 2}개` : titles.join(', ')}`, [lastZip.platform], await lastZip.pick(keys.filter(k => lastZip.conversations.some(c => c.key === k))), lastZip.append);
 });
 
 // 공유 코드: 서버에 올리고 8자리 코드를 받는다. 지울 수 있게 deleteToken은 이 PC의 페르소나 파일에만 둔다(공유 파일에는 안 들어감)

@@ -43,14 +43,14 @@ function need(provider) {
 }
 
 // stdout을 줄 단위 JSON으로 읽어 onLine에 넘긴다. 프롬프트는 stdin으로(명령줄 길이 제한 회피).
-function exec(file, args, { input = '', cwd, onLine, timeoutMs = 10 * 60_000 } = {}) {
+function exec(file, args, { input = '', cwd, env, onLine, timeoutMs = 10 * 60_000 } = {}) {
   return new Promise((resolve, reject) => {
     // .cmd는 셸 없이 못 띄운다. 인자는 모두 우리가 만든 값(모델명은 run에서 검사)이라 큰따옴표로 감싸면 충분.
     const shell = file.endsWith('.cmd');
     const p = spawn(shell ? `"${file}"` : file, shell ? args.map(a => `"${a}"`) : args, {
       cwd, shell, windowsHide: true,
       // npm으로 깐 CLI는 #!/usr/bin/env node라 node도 찾아야 한다: CLI가 있는 폴더와 흔한 설치 위치를 PATH에 더한다
-      env: { ...process.env, PATH: [path.dirname(file), process.env.PATH, ...EXTRA].filter(Boolean).join(path.delimiter) },
+      env: { ...process.env, ...env, PATH: [path.dirname(file), process.env.PATH, ...EXTRA].filter(Boolean).join(path.delimiter) },
     });
     let out = '', buf = '', err = '';
     const timer = setTimeout(() => { p.kill(); reject(new Error('응답 시간이 초과됐어요.')); }, timeoutMs);
@@ -168,4 +168,4 @@ async function check(provider) {
   return { ok: loggedIn, detail: `${ver} — ${loggedIn ? `로그인됨 (${who})` : `로그인 필요: ${c.login}`}\n${file}` };
 }
 
-module.exports = { CLI, MODELS, run, check, flatten, stripTags };
+module.exports = { CLI, MODELS, run, check, exec, flatten, stripTags };
