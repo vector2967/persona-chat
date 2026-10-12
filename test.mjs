@@ -181,8 +181,10 @@ const gflat = cli.flatten([{ role: 'user', content: '다들 뭐해' }, { role: '
 assert.match(gflat, /\[사용자\] 다들 뭐해\n\n\[민지\] 누움\n\[준호\] 롤\n\n사용자의 새 메시지:\n나도 낄래[\s\S]*\[이름\] 메시지/);
 console.log('ok (bubbles, group)');
 
-// --- 디스코드 DM 가져오기: DiscordChatExporter "dm" 출력 읽기
+// --- 디스코드 DM 가져오기: DM 목록 이름(그룹 DM 이름 > 상대 표시 이름 > 사용자명)
 const dceCli = require('./src/dce.js');
-assert.deepEqual(dceCli.parseDmList('123456789012345678 | 홍길동\n98765 | 민지, 준호 | 그룹\n\nERROR\n'),
-  [{ id: '123456789012345678', name: '홍길동' }, { id: '98765', name: '민지, 준호 | 그룹' }]);
+assert.equal(dceCli.dmTitle({ id: '1', recipients: [{ username: 'gildong', global_name: '홍길동😀' }] }), '홍길동😀');
+assert.equal(dceCli.dmTitle({ id: '2', recipients: [{ username: 'minji' }, { username: 'junho', global_name: '준호' }] }), 'minji, 준호');
+assert.equal(dceCli.dmTitle({ id: '3', name: '우리 셋', recipients: [] }), '우리 셋');
 console.log('ok (discord dm list)');
+

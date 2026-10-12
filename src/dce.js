@@ -58,9 +58,18 @@ async function dce(exe, args, token, timeoutMs) {
   return r.out;
 }
 
-// DM·그룹 DM 목록. 출력 한 줄 = "채널id | 이름"
-const parseDmList = out => [...out.matchAll(/^(\d+)\s*\|\s*(.+?)\s*$/gm)].map(m => ({ id: m[1], name: m[2] }));
-const listDms = async (exe, token) => parseDmList(await dce(exe, ['dm'], token, 2 * 60_000));
+// DM·그룹 DM 목록. DCE의 "dm" 출력은 윈도우에서 시스템 코드페이지(CP949)라 한글 이름이 깨지고 이모지는 사라진다.
+// 그래서 목록만 DCE가 쓰는 것과 같은 API를 직접 부른다(JSON이라 인코딩 문제 없음)
+const dmTitle = c => c.name || (c.recipients ?? []).map(r => r.global_name || r.username).join(', ') || c.id;
+async function listDms(token) {
+  const res = await fetch('https://discord.com/api/v10/users/@me/channels', { headers: { Authorization: token } });
+  if (res.status === 401) throw new Error('디스코드 토큰이 올바르지 않아요. 다시 복사해 주세요.');
+  if (!res.ok) throw new Error(`디스코드 DM 목록을 받지 못했어요. (HTTP ${res.status})`);
+  return (await res.json())
+    .filter(c => c.type === 1 || c.type === 3) // 1:1 DM, 그룹 DM
+    .sort((a, b) => (BigInt(b.last_message_id ?? 0) > BigInt(a.last_message_id ?? 0) ? 1 : -1)) // 최근 대화 먼저
+    .map(c => ({ id: c.id, name: dmTitle(c) }));
+}
 
 // 고른 채널들을 JSON으로 내보내 parsers.parseFiles에 그대로 넣을 수 있는 [{name, text}]로
 async function exportDms(exe, token, ids) {
@@ -72,4 +81,4 @@ async function exportDms(exe, token, ids) {
   } finally { fs.rmSync(out, { recursive: true, force: true }); }
 }
 
-module.exports = { ensure, listDms, exportDms, parseDmList };
+module.exports = { ensure, listDms, exportDms, dmTitle };

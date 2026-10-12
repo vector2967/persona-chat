@@ -124,7 +124,7 @@ handle('import:discord', async (e, token) => {
   try {
     exe = await dce.ensure(data('tools'), progress);
     progress('DM 목록 받는 중…');
-    dms = await dce.listDms(exe, token);
+    dms = await dce.listDms(token);
   } finally { progress(''); }
   if (!dms.length) throw new Error('DM이 없어요.');
   lastZip = {
