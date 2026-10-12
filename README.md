@@ -3,8 +3,7 @@
 카카오톡·인스타그램·디스코드에서 내보낸 대화로 지인의 말투·성격·기억을 정리해, 그 사람처럼 대화하는 챗봇을 만드는 Windows 데스크톱 앱입니다.
 
 - 서버에 계정이 없습니다. 대화 파일과 페르소나는 **내 PC에만** 저장됩니다.
-- LLM은 각자 준비합니다: API 키(Anthropic / OpenAI / Gemini) 또는 로그인해 둔 Claude Code / Codex CLI(구독 요금제).
-- 지인끼리 쓰려고 만든 앱입니다. 상대가 동의한 대화만 쓰세요.
+- 준비물: API 키(Anthropic / OpenAI / Gemini) 또는 로그인해 둔 Claude Code / Codex CLI(구독 요금제).
 
 ## 설치
 
