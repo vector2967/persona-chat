@@ -131,7 +131,7 @@ const SECTIONS = [
 const fmtCode = c => `${c.slice(0, 4)}-${c.slice(4)}`;
 
 // ---------- 사이드바 ----------
-const state = { tab: 'chats', route: {} };
+const state = { tab: 'chats', route: {}, select: null, chatQ: '', chatType: '' }; // select: 페르소나 다중 선택 중이면 고른 id Set
 const route = (name, id = null) => { state.route = { name, id }; };
 
 async function renderSide(animate = false) {
@@ -143,24 +143,93 @@ async function renderSide(animate = false) {
   if (state.tab === 'chats') {
     $('side-action').replaceChildren(icon('plus'), '새 채팅');
     $('side-action').onclick = () => openNewChat();
-    const list = await api.listChats();
-    items = list.map((c, i) => stagger(h('button', { class: 'item' + active(c.id), onclick: () => openChat(c.id) },
+    chatTools();
+    const q = state.chatQ.trim();
+    const list = await api.listChats(null, { q, type: state.chatType });
+    const lastLine = c => {
+      const b = c.hit ?? c.last;
+      return b ? `${b.mine ? '나: ' : c.type === 'group' && b.speaker ? `${b.speaker}: ` : ''}${b.text}` : '아직 대화가 없어요';
+    };
+    items = list.map((c, i) => stagger(h('button', { class: 'item' + active(c.id), onclick: () => openChat(c.id, { find: c.hit ? q : '' }) },
       c.type === 'group' ? avatarStack(c.names) : avatar(c.title),
       h('span', { class: 'item-main' },
         h('span', { class: 'item-top' }, h('b', { textContent: c.title }), h('time', { textContent: when(c.updatedAt) })),
-        h('small', { textContent: c.last ? `${c.last.mine ? '나: ' : c.type === 'group' && c.last.speaker ? `${c.last.speaker}: ` : ''}${c.last.text}` : '아직 대화가 없어요' }))), i));
-    if (!list.length) items = [h('div', { class: 'empty-side' }, '아직 대화가 없어요.', h('br'), '페르소나를 만들거나 "새 채팅"을 눌러 보세요.')];
+        h('small', { class: c.hit ? 'hit' : '', textContent: lastLine(c) }))), i));
+    if (!list.length && (q || state.chatType)) items = [h('div', { class: 'empty-side', textContent: q ? `"${q}" 검색 결과가 없어요.` : '이 종류의 대화가 없어요.' })];
+    else if (!list.length) items = [h('div', { class: 'empty-side' }, '아직 대화가 없어요.', h('br'), '페르소나를 만들거나 "새 채팅"을 눌러 보세요.')];
   } else {
+    $('list-tools').hidden = true;
     $('side-action').replaceChildren(icon('plus'), '새 페르소나');
     $('side-action').onclick = () => openImport();
     const list = await api.listPersonas();
-    items = list.map((p, i) => stagger(h('button', { class: 'item' + active(p.id), onclick: () => openPersona(p.id) },
-      avatar(p.name), h('span', { class: 'item-main' }, h('b', { textContent: p.name }), h('small', { textContent: `기억 ${p.nodes}개 · 예시 ${p.examples}개` }))), i));
+    const sel = state.select;
+    const main = p => [avatar(p.name), h('span', { class: 'item-main' }, h('b', { textContent: p.name }), h('small', { textContent: `기억 ${p.nodes}개 · 예시 ${p.examples}개` }))];
+    items = list.map((p, i) => stagger(sel
+      ? h('label', { class: 'item' }, h('input', { type: 'checkbox', checked: sel.has(p.id), onchange: e => { e.target.checked ? sel.add(p.id) : sel.delete(p.id); renderSide(); } }), ...main(p))
+      : h('button', { class: 'item' + active(p.id), onclick: () => openPersona(p.id) }, ...main(p)), i));
     if (!list.length) items = [h('div', { class: 'empty-side', textContent: '아직 페르소나가 없어요.' })];
+    else items.unshift(selectBar(list));
   }
   $('list').replaceChildren(...items);
 }
-for (const b of $('tabs').querySelectorAll('button')) b.onclick = () => { if (state.tab !== b.dataset.tab) { state.tab = b.dataset.tab; renderSide(true); } };
+for (const b of $('tabs').querySelectorAll('button')) b.onclick = () => { if (state.tab !== b.dataset.tab) { state.tab = b.dataset.tab; state.select = null; renderSide(true); } };
+
+// 채팅 탭 위 검색창·필터. 한 번만 만들어 두고 목록만 다시 그린다(입력 중 포커스가 날아가지 않게)
+function chatTools() {
+  const box = $('list-tools');
+  box.hidden = false;
+  if (box.firstChild) return;
+  const q = h('input', { type: 'text', placeholder: '채팅·메시지 검색', value: state.chatQ, 'aria-label': '채팅 검색' });
+  let t;
+  q.oninput = () => { clearTimeout(t); t = setTimeout(() => { state.chatQ = q.value; renderSide(); }, 150); };
+  q.onkeydown = e => { if (e.key === 'Escape' && q.value) { q.value = ''; q.oninput(); } };
+  const filters = [['', '전체'], ['direct', '1:1'], ['group', '단체방']].map(([v, label]) => h('button', { class: 'small ghost', textContent: label, 'aria-pressed': String(state.chatType === v),
+    onclick: () => { state.chatType = v; for (const [i, b] of filters.entries()) b.setAttribute('aria-pressed', String(i === ['', 'direct', 'group'].indexOf(v))); renderSide(); } }));
+  box.append(q, h('div', { class: 'filters', role: 'group', 'aria-label': '대화 종류' }, filters));
+}
+
+// 페르소나 다중 선택: 합치기 / 단체방 / 삭제
+function selectBar(list) {
+  const sel = state.select;
+  if (!sel) return h('div', { class: 'select-bar' }, h('button', { class: 'small ghost', onclick: () => { state.select = new Set(); renderSide(); } }, '여러 개 선택'));
+  const picked = list.filter(p => sel.has(p.id));
+  const done = () => { state.select = null; renderSide(); };
+  return h('div', { class: 'select-bar' },
+    h('span', { class: 'hint', textContent: `${picked.length}개 선택` }),
+    h('button', { class: 'small', disabled: picked.length < 2, onclick: () => mergePersonas(picked) }, '합치기'),
+    h('button', { class: 'small', disabled: !picked.length, onclick: () => { done(); openNewChat({ preselect: picked.map(p => p.id) }); } }, '대화'),
+    h('button', { class: 'small danger', disabled: !picked.length, onclick: async () => {
+      if (!confirm(`페르소나 ${picked.length}개(${picked.map(p => p.name).join(', ')})와 그 1:1 대화를 지울까요? 되돌릴 수 없어요.`)) return;
+      for (const p of picked) await api.deletePersona(p.id);
+      done();
+      home();
+    } }, '삭제'),
+    h('button', { class: 'small ghost', textContent: '취소', onclick: done }));
+}
+
+// 같은 사람을 따로 만든 페르소나들을 하나로. 고른 이름 하나만 남고 나머지의 기억·예시·대화가 옮겨진다
+function mergePersonas(picked) {
+  const err = errorBox();
+  const keep = [...picked].sort((a, b) => b.examples - a.examples)[0].id; // 기본: 예시가 가장 많은 쪽
+  const radios = picked.map(p => h('label', { class: 'check person' },
+    h('input', { type: 'radio', name: 'keep', value: p.id, checked: p.id === keep }), avatar(p.name, 'sm'),
+    h('span', {}, p.name, h('small', { textContent: `기억 ${p.nodes}개 · 예시 ${p.examples}개` }))));
+  const go = h('button', { class: 'primary', textContent: `${picked.length}개 합치기` });
+  const close = openModal('페르소나 합치기',
+    [h('p', { class: 'hint', textContent: '남길 이름을 고르세요. 나머지 페르소나의 기억·말투 예시·대화는 이 페르소나로 옮겨지고, 나머지는 목록에서 사라져요. 되돌릴 수 없어요.' }),
+      h('div', { class: 'people' }, radios), err],
+    [h('button', { class: 'ghost', textContent: '취소', onclick: () => close() }), go]);
+  go.onclick = async () => {
+    go.disabled = true;
+    try {
+      const keepId = radios.map(r => r.querySelector('input')).find(i => i.checked).value;
+      const p = await api.mergePersonas({ ids: picked.map(x => x.id), keepId });
+      close();
+      state.select = null;
+      openPersona(p.id);
+    } catch (e) { err.textContent = e.message; go.disabled = false; }
+  };
+}
 $('import').onclick = () => openReceive();
 $('settings').onclick = () => openSettings();
 
@@ -226,7 +295,7 @@ async function openNewChat({ preselect = [], inviteTo = null, exclude = [] } = {
 }
 
 // ---------- 대화방 ----------
-async function openChat(id, { draft = '', error = '' } = {}) {
+async function openChat(id, { draft = '', error = '', find = '' } = {}) {
   route('chat', id);
   renderSide();
   let c;
@@ -331,6 +400,11 @@ async function openChat(id, { draft = '', error = '' } = {}) {
   );
   grow();
   toBottom();
+  // 검색으로 열었으면 찾은 말풍선을 강조하고 가장 최근 것으로 스크롤
+  const f = find.trim().toLowerCase();
+  const found = f ? [...inner.querySelectorAll('.bubble')].filter(b => b.textContent.toLowerCase().includes(f)) : [];
+  for (const b of found) b.classList.add('found');
+  found.at(-1)?.scrollIntoView({ block: 'center' });
   input.focus();
 }
 

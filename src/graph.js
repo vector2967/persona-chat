@@ -49,6 +49,18 @@ function mergeExtraction(p, ex) {
   touch(p);
 }
 
+// 다른 페르소나를 통째로 합친다(같은 사람을 따로 만들었을 때). 같은 내용은 하나로 모으고 엣지는 새 id로 옮긴다.
+function mergePersona(p, src) {
+  const ids = {};
+  for (const [id, n] of Object.entries(src.nodes)) {
+    if (n.type === 'summary') mergeExtraction(p, { summary: n.text });
+    else ids[id] = addNode(p, n.type, n.text);
+  }
+  for (const [a, b] of src.edges) link(p, ids[a], ids[b]);
+  p.examples = [...p.examples, ...src.examples].slice(-5000);
+  touch(p);
+}
+
 // 편집 화면용 평면 목록 <-> 그래프
 function toFlat(p) {
   const adj = index(p).adj;
@@ -274,4 +286,4 @@ function fromShare(obj) {
   return p;
 }
 
-module.exports = { groupSystemPrompt, withGroupMemory, splitReply, toShare, fromShare, emptyPersona, mergeExtraction, toFlat, fromFlat, retrieve, systemPrompt, withMemory, extractionPrompt, parseJSON, index };
+module.exports = { groupSystemPrompt, withGroupMemory, splitReply, toShare, fromShare, emptyPersona, mergeExtraction, mergePersona, toFlat, fromFlat, retrieve, systemPrompt, withMemory, extractionPrompt, parseJSON, index };

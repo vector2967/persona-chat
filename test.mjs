@@ -188,3 +188,18 @@ assert.equal(dceCli.dmTitle({ id: '2', recipients: [{ username: 'minji' }, { use
 assert.equal(dceCli.dmTitle({ id: '3', name: '우리 셋', recipients: [] }), '우리 셋');
 console.log('ok (discord dm list)');
 
+// --- 페르소나 합치기: 같은 내용은 하나로, 엣지는 새 id로, 요약은 이어 붙이기
+{
+  const a = graph.emptyPersona('홍길동'), b = graph.emptyPersona('gildong');
+  graph.mergeExtraction(a, { summary: '대학생', style: ['반말'], facts: [{ text: '축구를 한다', topics: ['축구'] }] });
+  graph.mergeExtraction(b, { summary: '게이머', style: ['반말', 'ㅋㅋ'], facts: [{ text: '롤 다이아', topics: ['롤'] }], relations: [{ name: '민지', text: '친구' }] });
+  a.examples = [{ t: '가자' }]; b.examples = [{ t: 'ㄱㄱ' }];
+  graph.mergePersona(a, b);
+  const of = t => Object.values(a.nodes).filter(n => n.type === t).map(n => n.text);
+  assert.deepEqual(of('style'), ['반말', 'ㅋㅋ']);
+  assert.deepEqual(of('summary'), ['대학생\n게이머']);
+  assert.equal(a.examples.length, 2);
+  assert.ok(graph.retrieve(a, '요즘 롤 해?').facts.includes('롤 다이아'), '옮겨 온 엣지로 검색돼야 함');
+  assert.ok(graph.retrieve(a, '민지는?').facts.some(f => f.startsWith('민지')));
+  console.log('ok (persona merge)');
+}

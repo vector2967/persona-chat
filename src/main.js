@@ -255,6 +255,29 @@ handle('persona:delete', (e, id) => {
   }
 });
 
+// 여러 페르소나를 keepId 하나로 합친다. 나머지는 지우고, 그 대화방은 지우지 않고 합친 페르소나로 옮긴다
+// (메시지는 그대로 두므로 히스토리 덧붙이기 규칙과 상관없다. updatedAt이 바뀌어 raw 블록은 텍스트로만 다시 보낸다)
+handle('persona:merge', (e, { ids, keepId }) => {
+  ids = [...new Set(Array.isArray(ids) ? ids : [])].filter(id => personas.has(id));
+  if (ids.length < 2) throw new Error('합칠 페르소나를 두 개 이상 골라 주세요.');
+  if (!ids.includes(keepId)) throw new Error('남길 이름을 골라 주세요.');
+  const p = getPersona(keepId);
+  const others = ids.filter(id => id !== keepId);
+  for (const id of others) {
+    const src = getPersona(id);
+    graph.mergePersona(p, src);
+    p.shareCodes = [...(p.shareCodes ?? []), ...(src.shareCodes ?? [])]; // 올린 공유 코드를 나중에 지울 수 있게 deleteToken을 옮긴다
+  }
+  savePersona(p);
+  for (const id of others) { personas.delete(id); fs.rmSync(personaFile(id), { force: true }); }
+  for (const c of chats.values()) {
+    if (!c.personaIds.some(id => others.includes(id))) continue;
+    c.personaIds = [...new Set(c.personaIds.map(id => (others.includes(id) ? keepId : id)))];
+    saveChat(c);
+  }
+  return summaryOf(p);
+});
+
 // ---------- 대화방: chats/<id>.json = { id, type: 'direct'|'group', personaIds, title, createdAt, updatedAt, messages } ----------
 // 페르소나마다 1:1 대화를 여러 개 둘 수 있고, 단체방은 페르소나 여러 명을 초대한 방이다. 시작 시 전부 메모리에 올린다.
 // 메시지: { role, text(보이는 원문), content(LLM에 보낸 원문: 기억 포함), at, raw? }. 히스토리는 덧붙이기만 한다(CLAUDE.md).
@@ -287,9 +310,24 @@ function chatSummary(c) {
   return { id: c.id, type: c.type, title: titleOf(c), custom: !!c.title, personaIds: c.personaIds, names: membersOf(c).map(p => p.name), updatedAt: c.updatedAt, count: c.messages.length, last: lastBubble ?? null };
 }
 
-handle('chat:list', (e, personaId) => [...chats.values()]
-  .filter(c => !personaId || c.personaIds.includes(personaId))
-  .sort((a, b) => b.updatedAt - a.updatedAt).map(chatSummary));
+// q: 방 이름·참여자 이름·메시지 내용 검색(메시지로 찾았으면 가장 최근에 맞은 말풍선을 hit으로), type: direct|group 필터
+// ponytail: 매번 전체 메시지를 훑는다. 대화가 수십만 줄이 되면 색인을 둘 것
+handle('chat:list', (e, personaId, { q = '', type = '' } = {}) => {
+  q = String(q).trim().toLowerCase();
+  const has = t => String(t ?? '').toLowerCase().includes(q);
+  return [...chats.values()]
+    .filter(c => (!personaId || c.personaIds.includes(personaId)) && (!type || c.type === type))
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .map(c => {
+      const s = chatSummary(c);
+      if (!q || has(s.title) || s.names.some(has)) return s;
+      const m = c.messages.findLast(m => has(m.text));
+      if (!m) return null;
+      const hit = m.role === 'user' ? { text: m.text, mine: true } : bubblesOf(c, m.text).find(b => has(b.text)) ?? { text: m.text };
+      return { ...s, hit };
+    })
+    .filter(Boolean);
+});
 
 handle('chat:create', (e, { personaIds, title }) => {
   const ids = [...new Set(Array.isArray(personaIds) ? personaIds : [])].filter(id => personas.has(id));
