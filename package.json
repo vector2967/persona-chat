@@ -46,7 +46,8 @@
       "icon": "build/icon.png",
       "category": "public.app-category.social-networking",
       "identity": "-",
-      "artifactName": "Persona-Chat-${version}-mac-${arch}.${ext}"
+      "artifactName": "Persona-Chat-${version}-mac-${arch}.${ext}",
+      "hardenedRuntime": false
     },
     "linux": {
       "target": [
