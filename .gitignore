@@ -1,0 +1,37 @@
+# 의존성·빌드 결과
+node_modules/
+dist/
+*.log
+
+# 개인 작업 노트·도구 상태 (서버 접속 정보, PC 경로, 실제 데이터 언급이 있음)
+HANDOFF.md
+CLAUDE.md
+*.local.md
+.claude/
+.impeccable/
+.vscode/
+.idea/
+
+# 비밀
+.env
+.env.*
+*.key
+*.p12
+*.pfx
+id_*
+
+# 앱 데이터·대화 원본 (테스트하다 레포 안에 생겨도 올라가지 않게)
+settings.json
+personas/
+chats/
+*.persona.json
+*.zip
+KakaoTalk*.txt
+KakaoTalk*.csv
+messages/
+package/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store

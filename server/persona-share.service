@@ -1,0 +1,19 @@
+[Unit]
+Description=Persona Chat share server
+After=network.target
+
+[Service]
+User=persona-share
+WorkingDirectory=/opt/persona-share
+Environment=PORT=8788 DATA_DIR=/opt/persona-share/data TLS_KEY=/opt/persona-share/tls/key.pem TLS_CERT=/opt/persona-share/tls/cert.pem
+ExecStart=/usr/bin/node /opt/persona-share/server.js
+Restart=always
+RestartSec=3
+MemoryMax=150M
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/persona-share/data
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

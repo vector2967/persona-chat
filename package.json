@@ -1,0 +1,44 @@
+{
+  "name": "persona-chat",
+  "productName": "Persona Chat",
+  "version": "0.2.0",
+  "description": "카카오톡 대화로 지인 페르소나 챗봇 만들기",
+  "main": "src/main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node test.mjs",
+    "dist": "electron-builder --win portable",
+    "dist:setup": "electron-builder --win nsis",
+    "icon": "electron scripts/render-icon.js"
+  },
+  "build": {
+    "appId": "local.persona-chat",
+    "files": [
+      "src/**",
+      "renderer/**",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "directories": {
+      "output": "dist/${version}"
+    }
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.128.0",
+    "@google/genai": "2.24.0",
+    "fflate": "0.7.5",
+    "openai": "7.23.0"
+  },
+  "devDependencies": {
+    "electron": "44.4.5",
+    "electron-builder": "26.17.0"
+  }
+}

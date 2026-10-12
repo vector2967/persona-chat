@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:">
+<title>Persona Chat</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <aside class="side">
+    <div class="brand"><img src="icon.svg" alt=""><span>Persona Chat</span></div>
+    <div id="tabs" class="tabs" role="tablist" data-tab="chats">
+      <span class="tab-pill" aria-hidden="true"></span>
+      <button role="tab" data-tab="chats">채팅</button>
+      <button role="tab" data-tab="personas">페르소나</button>
+    </div>
+    <button id="side-action" class="side-action"></button>
+    <nav id="list" class="list"></nav>
+    <div class="side-foot">
+      <button id="import" class="ghost"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M4 20h16"/></svg>받기</button>
+      <button id="settings" class="ghost"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>설정</button>
+    </div>
+  </aside>
+  <main id="view"></main>
+  <div id="modal-root"></div>
+  <script src="app.js"></script>
+</body>
+</html>
