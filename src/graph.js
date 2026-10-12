@@ -5,7 +5,8 @@
 // edge: fact—topic, relation—topic(사람 이름). 질문과 겹치는 노드를 찾고 이웃까지 1칸 펼쳐서 기억으로 꺼낸다.
 const crypto = require('node:crypto');
 
-const newId = () => crypto.randomUUID().slice(0, 8);
+// 글자로 시작해야 한다: 숫자로만 된 키(예 "40518237")는 객체에서 맨 앞으로 가 Object.values 순서(프로필 순서)가 섞인다
+const newId = () => `n${crypto.randomUUID().slice(0, 7)}`;
 const TYPES = ['summary', 'style', 'trait', 'phrase', 'relation', 'fact'];
 
 function emptyPersona(name) {
