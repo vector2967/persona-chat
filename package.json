@@ -1,7 +1,7 @@
 {
   "name": "persona-chat",
   "productName": "Persona Chat",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "카카오톡·인스타그램·디스코드 대화로 지인 페르소나 챗봇 만들기",
   "main": "src/main.js",
   "private": true,
