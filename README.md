@@ -1,15 +1,28 @@
 # Persona Chat
 
-카카오톡·인스타그램·디스코드에서 내보낸 대화로 지인의 말투·성격·기억을 정리해, 그 사람처럼 대화하는 챗봇을 만드는 Windows 데스크톱 앱입니다.
+카카오톡·인스타그램·디스코드에서 내보낸 대화로 지인의 말투·성격·기억을 정리해, 그 사람처럼 대화하는 챗봇을 만드는 데스크톱 앱입니다(Windows·macOS·Linux).
 
 - 서버에 계정이 없습니다. 대화 파일과 페르소나는 **내 PC에만** 저장됩니다.
 - 준비물: API 키(Anthropic / OpenAI / Gemini) 또는 로그인해 둔 Claude Code / Codex CLI(구독 요금제).
 
 ## 설치
 
-[Releases](../../releases/latest)에서 `Persona Chat Setup x.y.z.exe`를 받아 실행합니다.
+[Releases](../../releases/latest)에서 내 OS에 맞는 파일을 받습니다. 코드 서명이 없어서 처음 열 때 경고가 뜹니다.
 
-코드 서명이 없어서 처음 실행할 때 Windows가 "PC 보호" 경고를 띄웁니다. **추가 정보 → 실행**을 누르세요.
+| OS | 파일 | 처음 열 때 |
+|---|---|---|
+| Windows | `Persona-Chat-Setup-x.y.z.exe` | "PC 보호" 경고 → **추가 정보 → 실행** |
+| macOS (애플 실리콘 M1~) | `Persona-Chat-x.y.z-mac-arm64.dmg` | 아래 참고 |
+| macOS (인텔) | `Persona-Chat-x.y.z-mac-x64.dmg` | 아래 참고 |
+| Linux | `Persona-Chat-x.y.z-linux-x86_64.AppImage` | `chmod +x` 후 실행 |
+
+**macOS:** dmg를 열어 앱을 Applications로 끌어 놓습니다. "손상되었거나 확인할 수 없는 개발자" 경고가 뜨면 터미널에서 아래를 한 번 실행한 뒤 다시 여세요.
+
+```
+xattr -cr "/Applications/Persona Chat.app"
+```
+
+**Linux:** Ubuntu 24.04 이상에서 sandbox 오류로 안 열리면 `./Persona-Chat-*.AppImage --no-sandbox`로 실행하세요.
 
 ## 사용법
 
@@ -44,8 +57,8 @@
 
 ## 데이터와 개인정보
 
-- 저장 위치: `%APPDATA%\Persona Chat\` (`settings.json`, `personas/`, `chats/`)
-- API 키는 Windows 자격 증명(Electron `safeStorage`)으로 암호화해 저장합니다.
+- 저장 위치(`settings.json`, `personas/`, `chats/`): Windows `%APPDATA%\Persona Chat\`, macOS `~/Library/Application Support/Persona Chat/`, Linux `~/.config/Persona Chat/`
+- API 키는 OS 자격 증명 저장소(Electron `safeStorage`: Windows DPAPI, macOS 키체인, Linux 키링)로 암호화해 저장합니다.
 - 페르소나를 만들 때, 고른 사람의 메시지와 바로 앞 맥락이 **고른 LLM 제공자에게 전송**됩니다.
 - 공유 코드를 만들 때만 페르소나 파일이 공유 서버에 올라갑니다(HTTPS, 30일 뒤 삭제).
 
@@ -56,12 +69,18 @@ npm install
 npm start           # 개발 실행
 npm test            # 파서·그래프·공유 검사 (LLM 호출 없음)
 node server/test.mjs  # 공유 서버 로컬 검사
-npm run dist        # dist/<버전>/Persona Chat x.y.z.exe (설치 없이 실행하는 portable)
-npm run dist:setup  # dist/<버전>/Persona Chat Setup x.y.z.exe (설치 파일)
+npm run dist        # dist/<버전>/Persona-Chat-x.y.z-portable.exe (설치 없이 실행)
+npm run dist:setup  # dist/<버전>/Persona-Chat-Setup-x.y.z.exe (Windows 설치 파일)
+npm run dist:mac    # dmg (arm64·x64), macOS에서만
+npm run dist:linux  # AppImage, Linux에서
 npm run icon        # renderer/icon.svg → 아이콘 PNG
 ```
 
 `npm install`에서 Electron 바이너리가 안 받아지면 `node node_modules/electron/install.js`를 한 번 실행하세요.
+
+### 릴리즈
+
+`package.json`의 `version`을 올려 커밋하고 `vX.Y.Z` 태그를 push하면 GitHub Actions(`.github/workflows/release.yml`)가 윈도우·맥·리눅스를 빌드해 그 릴리즈에 올립니다.
 
 ### 구조
 

@@ -1,8 +1,8 @@
 {
   "name": "persona-chat",
   "productName": "Persona Chat",
-  "version": "0.2.0",
-  "description": "카카오톡 대화로 지인 페르소나 챗봇 만들기",
+  "version": "0.2.1",
+  "description": "카카오톡·인스타그램·디스코드 대화로 지인 페르소나 챗봇 만들기",
   "main": "src/main.js",
   "private": true,
   "scripts": {
@@ -10,6 +10,8 @@
     "test": "node test.mjs",
     "dist": "electron-builder --win portable",
     "dist:setup": "electron-builder --win nsis",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux",
     "icon": "electron scripts/render-icon.js"
   },
   "build": {
@@ -23,9 +25,41 @@
       "target": "portable",
       "icon": "build/icon.png"
     },
+    "portable": {
+      "artifactName": "Persona-Chat-${version}-portable.${ext}"
+    },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "Persona-Chat-Setup-${version}.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "public.app-category.social-networking",
+      "identity": "-",
+      "artifactName": "Persona-Chat-${version}-mac-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "Chat",
+      "artifactName": "Persona-Chat-${version}-linux-${arch}.${ext}"
     },
     "directories": {
       "output": "dist/${version}"
@@ -40,5 +74,10 @@
   "devDependencies": {
     "electron": "44.4.5",
     "electron-builder": "26.17.0"
+  },
+  "homepage": "https://github.com/vector2967/persona-chat",
+  "author": {
+    "name": "vector2967",
+    "email": "63567632+vector2967@users.noreply.github.com"
   }
 }

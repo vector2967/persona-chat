@@ -1,0 +1,54 @@
+# 태그(vX.Y.Z)를 올리거나 Actions에서 직접 실행하면 윈도우·맥·리눅스를 각각 빌드해 그 태그의 릴리즈에 올린다.
+# 맥 dmg는 맥에서만 만들 수 있어서 로컬(Windows)이 아니라 여기서 빌드한다.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 올릴 릴리즈 태그 (예 v0.2.0)
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 릴리즈가 없으면 만들기
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: gh release view "$TAG" -R "$GITHUB_REPOSITORY" || gh release create "$TAG" -R "$GITHUB_REPOSITORY" --title "Persona Chat ${TAG#v}" --generate-notes
+
+  build:
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, cmd: npm run dist:setup }
+          - { os: macos-latest, cmd: npm run dist:mac }
+          - { os: ubuntu-latest, cmd: npm run dist:linux }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: '${{ env.TAG }}' }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm test
+      - run: ${{ matrix.cmd }} -- --publish never
+        env: { CSC_IDENTITY_AUTO_DISCOVERY: 'false' }
+      - name: 릴리즈에 올리기
+        shell: bash
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          shopt -s nullglob
+          files=(dist/*/Persona-Chat-*.exe dist/*/Persona-Chat-*.dmg dist/*/Persona-Chat-*.AppImage)
+          [ ${#files[@]} -gt 0 ] || { echo "빌드 결과가 없다"; exit 1; }
+          gh release upload "$TAG" "${files[@]}" --clobber -R "$GITHUB_REPOSITORY"

@@ -12,15 +12,20 @@ const CLI = {
 };
 const MODELS = { 'claude-cli': ['opus', 'sonnet', 'haiku', 'fable'], 'codex-cli': ['gpt-5.6-luna'] };
 
-// PATH + 흔한 설치 위치. Windows는 .exe를 .cmd보다 먼저(.cmd는 셸을 거쳐야 해서).
+// PATH + 흔한 설치 위치. 맥에서 Finder로 띄운 앱은 PATH가 /usr/bin:/bin 정도라 Homebrew·npm 전역 폴더를 직접 넣는다.
+// ponytail: nvm처럼 버전별 폴더에 깐 CLI는 못 찾는다. 필요하면 설정에 CLI 경로 입력란을 둘 것.
+const EXTRA = [
+  path.join(os.homedir(), '.local', 'bin'),
+  path.join(os.homedir(), '.claude', 'local'),
+  path.join(os.homedir(), '.npm-global', 'bin'),
+  '/opt/homebrew/bin', '/usr/local/bin',
+  process.env.APPDATA && path.join(process.env.APPDATA, 'npm'),
+  process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'Programs', 'OpenAI', 'Codex', 'bin'),
+].filter(Boolean);
+
+// Windows는 .exe를 .cmd보다 먼저(.cmd는 셸을 거쳐야 해서).
 function find(name) {
-  const env = process.env;
-  const dirs = [
-    ...(env.PATH || '').split(path.delimiter),
-    path.join(os.homedir(), '.local', 'bin'),
-    env.APPDATA && path.join(env.APPDATA, 'npm'),
-    env.LOCALAPPDATA && path.join(env.LOCALAPPDATA, 'Programs', 'OpenAI', 'Codex', 'bin'),
-  ].filter(Boolean);
+  const dirs = [...(process.env.PATH || '').split(path.delimiter), ...EXTRA].filter(Boolean);
   for (const ext of process.platform === 'win32' ? ['.exe', '.cmd'] : ['']) {
     for (const d of dirs) {
       const f = path.join(d, name + ext);
@@ -42,7 +47,11 @@ function exec(file, args, { input = '', cwd, onLine, timeoutMs = 10 * 60_000 } =
   return new Promise((resolve, reject) => {
     // .cmd는 셸 없이 못 띄운다. 인자는 모두 우리가 만든 값(모델명은 run에서 검사)이라 큰따옴표로 감싸면 충분.
     const shell = file.endsWith('.cmd');
-    const p = spawn(shell ? `"${file}"` : file, shell ? args.map(a => `"${a}"`) : args, { cwd, shell, windowsHide: true });
+    const p = spawn(shell ? `"${file}"` : file, shell ? args.map(a => `"${a}"`) : args, {
+      cwd, shell, windowsHide: true,
+      // npm으로 깐 CLI는 #!/usr/bin/env node라 node도 찾아야 한다: CLI가 있는 폴더와 흔한 설치 위치를 PATH에 더한다
+      env: { ...process.env, PATH: [path.dirname(file), process.env.PATH, ...EXTRA].filter(Boolean).join(path.delimiter) },
+    });
     let out = '', buf = '', err = '';
     const timer = setTimeout(() => { p.kill(); reject(new Error('응답 시간이 초과됐어요.')); }, timeoutMs);
     p.stdout.setEncoding('utf8').on('data', d => {
